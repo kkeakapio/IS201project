@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extreme Pong</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #ui-container {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #high-score {
+            font-size: 1.2rem;
+            color: #00ffcc;
+        }
+
+        #current-score {
+            font-size: 2rem;
+            margin: 5px 0;
+        }
+
+        canvas {
+            border: 4px solid #fff;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .controls-hint {
+            margin-top: 10px;
+            color: #888;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div id="high-score">BEST: 0</div>
+        <div id="current-score">0</div>
+    </div>
+
+    <canvas id="pongCanvas"></canvas>
+
+    <div class="controls-hint">Use LEFT and RIGHT arrow keys to move</div>
+
+    <script>
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('current-score');
+        const highScoreElement = document.getElementById('high-score');
+
+        // Game Constants
+        canvas.width = 400;
+        canvas.height = 600;
+        
+        const PADDLE_WIDTH = 80;
+        const PADDLE_HEIGHT = 10;
+        const BALL_SIZE = 8;
+        const INITIAL_SPEED = 4;
+        const SPEED_INCREMENT = 1.05; // 5% faster each hit
+
+        // Game State
+        let ballX = canvas.width / 2;
+        let ballY = canvas.height / 2;
+        let ballVX = INITIAL_SPEED;
+        let ballVY = INITIAL_SPEED;
+        let ballSpeed = INITIAL_SPEED;
+
+        let playerX = (canvas.width - PADDLE_WIDTH) / 2;
+        let cpuX = (canvas.width - PADDLE_WIDTH) / 2;
+        
+        let score = 0;
+        let highScore = localStorage.getItem('pongHighScore') || 0;
+        highScoreElement.innerText = `BEST: ${highScore}`;
+
+        let leftPressed = false;
+        let rightPressed = false;
+
+        // Event Listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = true;
+            if (e.key === 'ArrowRight') rightPressed = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = false;
+            if (e.key === 'ArrowRight') rightPressed = false;
+        });
+
+        function resetBall() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('pongHighScore', highScore);
+                highScoreElement.innerText = `BEST: ${highScore}`;
+            }
+            
+            score = 0;
+            scoreElement.innerText = score;
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+            ballSpeed = INITIAL_SPEED;
+            ballVX = INITIAL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+            ballVY = INITIAL_SPEED;
+        }
+
+        function update() {
+            // Move Player
+            if (leftPressed && playerX > 0) playerX -= 7;
+            if (rightPressed && playerX < canvas.width - PADDLE_WIDTH) playerX += 7;
+
+            // Move CPU (Perfect tracking as requested)
+            // Centering the paddle on the ball
+            cpuX = ballX - PADDLE_WIDTH / 2;
+            // Keep CPU in bounds
+            if (cpuX < 0) cpuX = 0;
+            if (cpuX > canvas.width - PADDLE_WIDTH) cpuX = canvas.width - PADDLE_WIDTH;
+
+            // Move Ball
+            ballX += ballVX;
+            ballY += ballVY;
+
+            // Wall Collisions (Left/Right)
+            if (ballX <= 0 || ballX + BALL_SIZE >= canvas.width) {
+                ballVX *= -1;
+            }
+
+            // CPU Paddle Collision (Top)
+            if (ballY <= PADDLE_HEIGHT) {
+                if (ballX > cpuX && ballX < cpuX + PADDLE_WIDTH) {
+                    ballVY = Math.abs(ballVY); // Ensure it goes down
+                    increaseSpeed();
+                }
+            }
+
+            // Player Paddle Collision (Bottom)
+            if (ballY + BALL_SIZE >= canvas.height - PADDLE_HEIGHT) {
+                if (ballX > playerX && ballX < playerX + PADDLE_WIDTH) {
+                    ballVY = -Math.abs(ballVY); // Ensure it goes up
+                    score++;
+                    scoreElement.innerText = score;
+                    increaseSpeed();
+                } else {
+                    resetBall(); // Game over
+                }
+            }
+        }
+
+        function increaseSpeed() {
+            ballSpeed *= SPEED_INCREMENT;
+            // Maintain direction but update magnitude
+            let angle = Math.atan2(ballVY, ballVX);
+            ball
